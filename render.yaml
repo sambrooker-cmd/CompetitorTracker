@@ -1,0 +1,30 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Lets you deploy the API in one step: Render dashboard → New →
+# Blueprint → point at this repo. It reads this file and creates the
+# service below; you then fill in the two `sync: false` env vars
+# (DATABASE_URL and CORS_ORIGIN) in the dashboard, since those are
+# specific to your Postgres project and deployed frontend URL.
+#
+# Uses the free plan — see README.md "Deploying for free" for the full
+# walkthrough, including the frontend (deployed separately, e.g. Vercel)
+# and the free hosted Postgres (e.g. Neon) that DATABASE_URL should point to.
+services:
+  - type: web
+    name: competitor-tracker-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm run prisma:deploy && npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: SCRAPE_TRIGGER_TOKEN
+        generateValue: true
+      - key: SCRAPE_CRON
+        value: "0 6 * * *"
+      - key: DISCOVERY_CRON
+        value: "0 5 * * 1"
