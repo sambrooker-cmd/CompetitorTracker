@@ -1,0 +1,53 @@
+// Prisma schema for the Competitor Pricing & Promotions Tracker.
+//
+// Defaults to SQLite (zero-config, free, file-based) for local dev and
+// small free-tier deployments. To use a free hosted Postgres instead
+// (e.g. Neon or Supabase free tier), change the provider below to
+// "postgresql" and set DATABASE_URL accordingly — no other code changes
+// are needed since the app only uses Prisma's generated client.
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Competitor {
+  id        Int       @id @default(autoincrement())
+  name      String
+  website   String
+  notes     String?
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id            Int          @id @default(autoincrement())
+  name          String
+  url           String
+  priceSelector String
+  promoSelector String?
+  currency      String       @default("USD")
+  competitorId  Int
+  competitor    Competitor   @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  priceEntries  PriceEntry[]
+  createdAt     DateTime     @default(now())
+
+  @@index([competitorId])
+}
+
+model PriceEntry {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price      Float?
+  promoText  String?
+  rawPrice   String?
+  error      String?
+  scrapedAt  DateTime @default(now())
+
+  @@index([productId, scrapedAt])
+}

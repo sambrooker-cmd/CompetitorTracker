@@ -1,0 +1,30 @@
+name: Scheduled competitor scrape
+
+# Free-tier hosts (Render, Railway, Fly.io, etc.) often spin down an idle
+# web service, so an in-process cron job on the server can miss its
+# schedule while asleep. This workflow calls the deployed API on a
+# schedule instead, using GitHub Actions' free minutes to both wake the
+# service and trigger a scrape reliably.
+#
+# Setup:
+#   1. Deploy the server (see README.md) and note its public URL.
+#   2. Add two repository secrets under Settings > Secrets and variables > Actions:
+#        API_URL              e.g. https://your-app.onrender.com
+#        SCRAPE_TRIGGER_TOKEN matching the server's SCRAPE_TRIGGER_TOKEN env var
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scrape
+        run: |
+          curl -sf -X POST "${API_URL%/}/api/scrape/run" \
+            -H "X-Scrape-Token: ${SCRAPE_TRIGGER_TOKEN}" \
+            --max-time 120
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          SCRAPE_TRIGGER_TOKEN: ${{ secrets.SCRAPE_TRIGGER_TOKEN }}
