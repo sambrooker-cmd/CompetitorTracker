@@ -1,12 +1,8 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
 import { prisma } from "../lib/prisma";
 import { parsePrice } from "./parsePrice";
+import { fetchHtml } from "./fetchHtml";
 import type { Product } from "@prisma/client";
-
-const REQUEST_TIMEOUT_MS = 15_000;
-const USER_AGENT =
-  "Mozilla/5.0 (compatible; CompetitorPricingTracker/1.0; +https://github.com/) research bot";
 
 export interface ScrapeResult {
   price: number | null;
@@ -15,15 +11,12 @@ export interface ScrapeResult {
   error: string | null;
 }
 
-/** Fetches a product page and extracts price/promo text via CSS selectors. Does not write to the DB. */
-export async function scrapeProduct(product: Pick<Product, "url" | "priceSelector" | "promoSelector">): Promise<ScrapeResult> {
+/** Fetches a tracked sailing's page and extracts price/promo text via CSS selectors. Does not write to the DB. */
+export async function scrapeProduct(
+  product: Pick<Product, "url" | "priceSelector" | "promoSelector" | "renderMode">
+): Promise<ScrapeResult> {
   try {
-    const { data: html } = await axios.get<string>(product.url, {
-      timeout: REQUEST_TIMEOUT_MS,
-      headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
-      validateStatus: (status) => status >= 200 && status < 400,
-    });
-
+    const html = await fetchHtml(product.url, product.renderMode);
     const $ = cheerio.load(html);
 
     const rawPrice = $(product.priceSelector).first().text().trim() || null;

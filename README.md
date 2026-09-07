@@ -1,34 +1,147 @@
 # Competitor Pricing & Promotions Tracker
 
-Tracks competitor product prices and promotions over time by scraping
-product pages on a schedule, storing the history, and surfacing price
-drops/increases and new/ended promotions on a dashboard.
+Built for Ambassador Cruise Line's Acquisition/Retention/Website digital
+team. Tracks competitor cruise lines' headline offers and pricing on a
+representative sample of sailings, on a schedule, so the team sees a
+competitor price/offer move instead of hearing about it from a customer.
 
-Designed to run entirely on free tiers: SQLite (or a free hosted Postgres),
-a free Node host for the API, and a free static host for the dashboard.
+Sister tool to the "Digital Team Planner" — a separate app/repo, not an
+extension of it. This one needs always-on scheduled infrastructure (not
+static hosting), which shapes the deployment section below.
+
+Designed to run on free tiers wherever possible: SQLite (or a free hosted
+Postgres), a free Node host for the API, and a free static host for the
+dashboard. The one thing that can push this past "fully free" is scraping a
+JavaScript-rendered competitor site — see **Static vs JS-rendered
+competitors** below.
+
+## Competitor set
+
+Seeded from the "Competitor Identification and Market Context" workbook
+(Sept 2026), covering Ambassador's ex-UK, no-fly segment, tiered exactly as
+that workbook's own analysis splits them:
+
+- **Direct** (closest product/size peers): Fred. Olsen Cruise Lines, Saga
+  Cruises, Marella Cruises, P&O Cruises
+- **International** (bigger premium/mainstream lines with UK no-fly
+  programmes): Cunard, MSC Cruises (UK), Celebrity Cruises, Princess
+  Cruises, Royal Caribbean International
+- **Trade** (independent/OTA agents reselling the above): iglu Cruise,
+  Planet Cruise, Cruise.co.uk, Bolsover Cruise Club, Cruise Nation,
+  Cruise1st UK
+
+The fly-Caribbean sub-segment's competitor set is explicitly out of scope
+for that workbook and hasn't been seeded — it needs its own pass.
+
+`npm run seed` (in `server/`) loads this list as `Competitor` rows only —
+no sailings or offer pages are pre-configured, because writing a real CSS
+selector requires inspecting each site's actual markup, which needs to
+happen from an environment with normal internet access (see
+**Adding a real competitor** below).
 
 ## How it works
 
 - **`server/`** — Express + TypeScript API, backed by Prisma/SQLite.
-  - You register competitors and products; each product has a URL plus a
-    CSS selector for its price element (and optionally one for promo text,
-    e.g. a "Sale" badge or availability banner).
-  - `POST /api/scrape/run` fetches every product's page with `axios`,
-    parses it with `cheerio` using the configured selectors, and stores a
-    `PriceEntry` (price, raw text, promo text, or an error if the selector
-    didn't match).
-  - An in-process `node-cron` job calls this on a schedule
-    (`SCRAPE_CRON` env var, default every 6 hours).
-  - `GET /api/alerts` compares each product's latest two price entries and
-    reports price drops/increases and promos that appeared or disappeared.
-- **`client/`** — React + Vite + Tailwind dashboard: add competitors and
-  products, view price history charts (Recharts), promo history, and the
-  alerts feed.
+  - **Tracked sailings** (`Product` in the schema) are a representative
+    pricing sample per competitor, not every cabin on every sailing —
+    each has a URL, a CSS selector for its price, an optional one for
+    incidental promo text, and dimensions to keep the sample meaningful:
+    `routeType` (ex-UK vs fly-Caribbean), `destination`, `nights`,
+    `cabinType`.
+  - **Offers** are tracked separately from sailings, since a headline
+    promotion ("Free drinks package", "Kids sail free") is usually
+    brand-wide rather than tied to one itinerary. Each competitor can have
+    an `offersUrl` + `offerSelector` (a CSS selector matching each
+    individual offer element on that page).
+  - `POST /api/scrape/run` scrapes every tracked sailing (price) and every
+    competitor with offer tracking configured, then:
+    - stores a `PriceEntry` per sailing (price, raw text, promo text, or
+      an error if the selector didn't match anything — this is targeted
+      extraction of specific fields, not whole-page diffing, so incidental
+      markup changes don't generate noise);
+    - diffs the current offer list against the last-known active offers
+      per competitor (`scraper/scrapeOffers.ts`): an offer not seen before
+      is created (`firstSeenAt` = now), one still present has `lastSeenAt`
+      bumped, and one that's disappeared is marked inactive with
+      `endedAt` = now. Validity dates/"while stocks last" are extracted
+      best-effort from the offer text (`scraper/offerValidity.ts`) —
+      offer copy has no fixed format, so the full raw text is always kept
+      alongside in case parsing misses.
+  - An in-process `node-cron` job calls this daily by default
+    (`SCRAPE_CRON` env var — cruise pricing/offers don't move hourly, so
+    daily is the starting cadence; lower it per-deployment if needed).
+  - `GET /api/alerts` derives price drops/increases, promos that
+    appeared/disappeared, and new/ended offers from the stored history —
+    nothing extra to keep in sync, it's all computed on read.
+- **`client/`** — React + Vite + Tailwind dashboard: competitors grouped by
+  tier, current offers per competitor, price history charts (Recharts) per
+  tracked sailing, and the combined alerts feed.
 - **`.github/workflows/scrape.yml`** — an optional scheduled GitHub Action
   that calls `POST /api/scrape/run` on your deployed API. Free hosts often
   spin an idle service down, which can cause the in-process cron to be
   skipped while asleep; this workflow both wakes the service and triggers
   the scrape reliably using GitHub's free Actions minutes.
+
+## Static vs JS-rendered competitors
+
+Most of the scraping here is a plain HTTP GET parsed with `cheerio`
+(`renderMode: "static"` on a `Competitor`/tracked sailing) — fast, cheap,
+and enough for server-rendered pages.
+
+Some competitor sites populate price/offer content client-side with
+JavaScript, which a plain GET won't see. For those, set `renderMode: "js"`
+— `scraper/fetchHtml.ts` then renders the page in headless Chromium
+(via [Playwright](https://playwright.dev)) before extraction, using the
+same CSS-selector logic either way.
+
+This is the single biggest risk to staying free:
+- `playwright` is **not** a default dependency of `server/` — it's
+  lazy-`require`d, so a deployment with no JS-rendered competitors never
+  needs it. Enabling `renderMode: "js"` for any competitor requires
+  `npm install playwright && npx playwright install chromium` in `server/`.
+- Chromium itself is ~300MB and meaningfully increases build time, disk
+  use, and per-scrape memory — likely to exceed a free web-service tier's
+  limits (e.g. Render's free tier) once more than a couple of JS-rendered
+  competitors are scraped on the same schedule.
+- If that happens, options in rough order of remaining "free where
+  possible": (1) keep JS-rendered competitors to a minimum and stagger
+  their scrapes; (2) run just the JS-rendered subset as a scheduled
+  GitHub Actions job instead of on the always-on API host (Actions
+  minutes are free and come with their own Linux runner, so no host
+  memory limit); (3) a free tier of a hosted browser service (e.g.
+  Browserless) if both of those aren't enough.
+
+Per the incremental rollout plan below, start with static-HTML
+competitors and only reach for `renderMode: "js"` once one specifically
+needs it.
+
+## Adding a real competitor's sailings/offers
+
+Building a real scraper is "one small scraper per competitor" — each site
+has different markup, so there's no generic selector that works
+everywhere. For each pilot competitor:
+
+1. Open the competitor's pricing page and their offers/promotions page in
+   a browser.
+2. Check `robots.txt` (`https://competitor-domain/robots.txt`) and their
+   terms of service before scraping anything — don't skip this. If a page
+   disallows crawling or the ToS prohibits automated access, don't track
+   it here.
+3. Right-click the price element → Inspect → find (or build) a CSS
+   selector that uniquely matches it. Same for an offer banner/element on
+   the offers page, and optionally a promo/availability element on the
+   sailing page.
+4. In the dashboard's **Competitors** page, use **+ Track sailing** (URL +
+   price selector + route/destination/nights/cabin type) and **Offer
+   tracking** (offers page URL + offer selector) to wire it up, then hit
+   **Scrape now** and confirm a `PriceEntry`/`Offer` appears.
+5. If the price doesn't show up on a static fetch, the page is likely
+   JS-rendered — switch that sailing/competitor to `renderMode: "js"`
+   (see above) and retry.
+
+Start with 2-3 competitors (one per tier is a good spread of site
+structures to prove the approach on) before adding the rest of the seeded
+list.
 
 ## A note on scraping responsibly
 
@@ -49,7 +162,7 @@ npm install                     # installs both workspaces
 cp server/.env.example server/.env
 cd server
 npx prisma migrate dev --name init
-npm run seed                    # adds a demo competitor (books.toscrape.com)
+npm run seed                    # loads the real competitor list (see above)
 cd ..
 npm run dev:server              # http://localhost:4000
 
@@ -58,9 +171,9 @@ cp client/.env.example client/.env
 npm run dev:client              # http://localhost:5173
 ```
 
-Open the dashboard, go to **Competitors**, add a real competitor and a
-product with a CSS selector for its price (use your browser's inspector to
-find one), then click **Scrape now**.
+Open the dashboard, go to **Competitors**, and follow **Adding a real
+competitor's sailings/offers** above for whichever competitor you're
+piloting first.
 
 ## Deploying for free
 
@@ -94,13 +207,29 @@ Add two repository secrets (`API_URL`, `SCRAPE_TRIGGER_TOKEN` matching the
 server's) so `.github/workflows/scrape.yml` can wake and trigger scrapes on
 a schedule even if the free host spins the service down between requests.
 
+## Alerts and who sees them
+
+`GET /api/alerts` and the dashboard's alerts feed are the only surface
+today — no email/Slack digest is wired up yet, since there's no confirmed
+recipient list. Both are straightforward to add once there is one:
+a free Slack incoming webhook for a channel digest, or a transactional
+email free tier (e.g. Resend) for an email digest — either would just read
+from the same `GET /api/alerts` response on the existing daily cron.
+
 ## Data model
 
-- `Competitor` — name, website, notes.
-- `Product` — belongs to a competitor; `url`, `priceSelector`,
-  `promoSelector` (optional), `currency`.
-- `PriceEntry` — one scrape result per product: `price`, `rawPrice`,
-  `promoText`, `error`, `scrapedAt`.
+- `Competitor` — name, website, `tier` (`direct` / `international` /
+  `trade`), `parentGroup`, notes, and optional `offersUrl`/`offerSelector`/
+  `renderMode` for offer tracking.
+- `Product` (a tracked sailing) — belongs to a competitor; `url`,
+  `priceSelector`, `promoSelector` (optional), `currency`, `routeType`
+  (`ex_uk` / `fly_caribbean`), `destination`, `nights`, `cabinType`,
+  `renderMode`.
+- `PriceEntry` — one scrape result per tracked sailing: `price`,
+  `rawPrice`, `promoText`, `error`, `scrapedAt`.
+- `Offer` — one headline promotion per competitor: `title`, `detail`/
+  `rawText`, `validFrom`/`validUntil` (best-effort parsed),
+  `whileStocksLast`, `active`, `firstSeenAt`, `lastSeenAt`, `endedAt`.
 
-Alerts are derived on read from consecutive `PriceEntry` rows rather than
-stored, so there's nothing extra to keep in sync.
+Alerts are derived on read from `PriceEntry`/`Offer` history rather than
+stored separately, so there's nothing extra to keep in sync.

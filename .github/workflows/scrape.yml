@@ -13,7 +13,7 @@ name: Scheduled competitor scrape
 #        SCRAPE_TRIGGER_TOKEN matching the server's SCRAPE_TRIGGER_TOKEN env var
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 6 * * *" # daily at 06:00 UTC — matches the server's SCRAPE_CRON default
   workflow_dispatch: {}
 
 jobs:

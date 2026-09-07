@@ -34,13 +34,13 @@ export default function Dashboard() {
     }
   }
 
-  const productCount = competitors.reduce((sum, c) => sum + c.products.length, 0);
+  const sailingCount = competitors.reduce((sum, c) => sum + c.products.length, 0);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Competitors" value={competitors.length} />
-        <StatCard label="Tracked products" value={productCount} />
+        <StatCard label="Tracked sailings" value={sailingCount} />
         <StatCard label="Recent alerts" value={alerts.length} />
       </div>
 
@@ -59,7 +59,7 @@ export default function Dashboard() {
         <p className="text-slate-500 text-sm">Loading...</p>
       ) : alerts.length === 0 ? (
         <p className="text-slate-500 text-sm">
-          No alerts yet. Add a competitor and product, then run a scrape.
+          No alerts yet. Add a tracked sailing or offer page to a competitor, then run a scrape.
         </p>
       ) : (
         <ul className="divide-y divide-slate-200 bg-white rounded-lg border border-slate-200">
@@ -68,9 +68,13 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <AlertBadge type={a.type} />
-                  <Link to={`/products/${a.productId}`} className="font-medium hover:underline truncate">
-                    {a.productName}
-                  </Link>
+                  {a.productId != null ? (
+                    <Link to={`/products/${a.productId}`} className="font-medium hover:underline truncate">
+                      {a.productName}
+                    </Link>
+                  ) : (
+                    <span className="font-medium truncate">{a.productName}</span>
+                  )}
                   <span className="text-slate-400 text-sm">· {a.competitorName}</span>
                 </div>
                 <p className="text-sm text-slate-600 truncate">{a.detail}</p>

@@ -6,6 +6,8 @@ const styles: Record<Alert["type"], string> = {
   new_promo: "bg-indigo-100 text-indigo-800",
   promo_ended: "bg-slate-200 text-slate-700",
   scrape_error: "bg-red-100 text-red-800",
+  new_offer: "bg-indigo-100 text-indigo-800",
+  offer_ended: "bg-slate-200 text-slate-700",
 };
 
 const labels: Record<Alert["type"], string> = {
@@ -14,6 +16,8 @@ const labels: Record<Alert["type"], string> = {
   new_promo: "New promotion",
   promo_ended: "Promotion ended",
   scrape_error: "Scrape error",
+  new_offer: "New offer",
+  offer_ended: "Offer ended",
 };
 
 export default function AlertBadge({ type }: { type: Alert["type"] }) {

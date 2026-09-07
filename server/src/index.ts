@@ -4,6 +4,7 @@ import cors from "cors";
 import { competitorsRouter } from "./routes/competitors";
 import { productsRouter } from "./routes/products";
 import { alertsRouter } from "./routes/alerts";
+import { offersRouter } from "./routes/offers";
 import { scrapeRouter } from "./routes/scrape";
 import { startScrapeCron } from "./cron";
 
@@ -17,6 +18,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/competitors", competitorsRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/alerts", alertsRouter);
+app.use("/api/offers", offersRouter);
 app.use("/api/scrape", scrapeRouter);
 
 const port = Number(process.env.PORT) || 4000;
