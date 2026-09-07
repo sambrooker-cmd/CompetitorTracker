@@ -6,6 +6,7 @@ import { productsRouter } from "./routes/products";
 import { alertsRouter } from "./routes/alerts";
 import { offersRouter } from "./routes/offers";
 import { scrapeRouter } from "./routes/scrape";
+import { discoveryRouter } from "./routes/discovery";
 import { startScrapeCron } from "./cron";
 
 const app = express();
@@ -20,6 +21,7 @@ app.use("/api/products", productsRouter);
 app.use("/api/alerts", alertsRouter);
 app.use("/api/offers", offersRouter);
 app.use("/api/scrape", scrapeRouter);
+app.use("/api/discovered-sailings", discoveryRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {

@@ -143,6 +143,72 @@ Start with 2-3 competitors (one per tier is a good spread of site
 structures to prove the approach on) before adding the rest of the seeded
 list.
 
+**Once a competitor's selectors are proven on one cruise**, adding another
+cruise on the *same* competitor doesn't need fresh HTML: their per-cabin
+price selectors are usually a sitewide template (e.g. Fred. Olsen's
+`#{cabintype}-standard-tab p` worked identically across two different
+ships). Save the proven selectors as `CabinSelectorTemplate` rows for that
+competitor (see `seed.ts` for the Fred. Olsen/P&O examples), then:
+
+```bash
+POST /api/competitors/:id/sailings/from-url
+{ "url": "...", "name": "...", "destination": "...", "nights": 7, "routeType": "ex_uk" }
+```
+
+creates one tracked sailing per known cabin type in a single call. A
+`CabinSelectorTemplate` is provisional until checked against more than one
+cruise, though (a competitor could always have a special-format page) —
+treat a competitor's templates as more trustworthy the more cruises
+they've been confirmed against.
+
+## Discovering new cruises automatically
+
+Manually registering each cruise doesn't scale to "track everything
+Ambassador has a comparable route for." `scraper/discoverListing.ts` +
+`scraper/runDiscovery.ts` add a discovery layer on top of the manual
+workflow above, in three parts:
+
+1. **Ambassador's own routes** (`AmbassadorRoute` table) — the canonical
+   list of what counts as "in scope": destination, night-count range, and
+   `routeType` (`ex_uk`/`fly_caribbean`). This has to come from
+   Ambassador's own sailing programme (ambassadorcruiseline.com) — nothing
+   here invents it. Populate it the same way a competitor gets its first
+   selectors: send a listing-page URL + a copied card, or (once someone
+   with network access can) write a listing-discovery config for
+   Ambassador's own site and run it into this table.
+2. **Per-competitor listing discovery** — a competitor with `listingUrl` +
+   `listingCardSelector`/`listingNameSelector`/`listingUrlSelector`
+   configured (plus optionally `listingNightsSelector` and
+   `listingFlyIndicatorSelector`) gets its search/listing page (e.g. Fred.
+   Olsen's `/cruise-deals`) scraped for candidate cruises. Each candidate
+   is classified `ex_uk` (no fly indicator), `fly_caribbean` (fly indicator
+   + a Caribbean destination keyword match — see `CARIBBEAN_KEYWORDS` in
+   `lib/constants.ts`), or out of scope (fly indicator, non-Caribbean
+   destination — e.g. a fly-cruise to Spain) and silently dropped, since
+   Ambassador only runs those first two segments.
+3. **Matching + human review** — an in-scope candidate is fuzzy-matched
+   (`lib/matchRoute.ts`: exact route type, nights within the route's
+   range, word-overlap on destination) against `AmbassadorRoute`. A match
+   is queued as a `DiscoveredSailing` (status `pending`) rather than
+   auto-registered. Nothing becomes a real tracked sailing until a human
+   approves it on the **Discovered** dashboard page (or
+   `POST /api/discovered-sailings/:id/approve`), which then applies that
+   competitor's `CabinSelectorTemplate`s to create real sailings in one
+   step. Rejecting a candidate sticks — it won't be re-queued on the next
+   discovery run.
+
+This runs on its own weekly cron (`DISCOVERY_CRON`, separate from the
+daily price/offer scrape) since listing pages change far less often than
+prices, and because it's more requests across more pages than the
+per-sailing scrape — keeping it infrequent and human-reviewed is a
+deliberate choice, not a placeholder to remove once "trusted": broader,
+unattended crawling of a competitor's full site is a bigger request-volume
+and robots.txt decision that should be made explicitly if it's ever
+wanted, not defaulted into.
+
+`POST /api/discovered-sailings/run` (optionally `?competitorId=`) triggers
+a discovery pass on demand.
+
 ## A note on scraping responsibly
 
 Only scrape pages you're allowed to access. Check each competitor's
@@ -230,6 +296,14 @@ from the same `GET /api/alerts` response on the existing daily cron.
 - `Offer` — one headline promotion per competitor: `title`, `detail`/
   `rawText`, `validFrom`/`validUntil` (best-effort parsed),
   `whileStocksLast`, `active`, `firstSeenAt`, `lastSeenAt`, `endedAt`.
+- `CabinSelectorTemplate` — a competitor's proven per-cabin-type price
+  selector, reusable across any of their cruise URLs (see **Discovering
+  new cruises automatically**).
+- `AmbassadorRoute` — Ambassador's own sailing programme (destination,
+  night-count range, route type), the reference list discovered
+  competitor cruises are matched against.
+- `DiscoveredSailing` — a candidate cruise found by listing discovery that
+  matched an `AmbassadorRoute`, pending human approval/rejection.
 
 Alerts are derived on read from `PriceEntry`/`Offer` history rather than
 stored separately, so there's nothing extra to keep in sync.

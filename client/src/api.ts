@@ -80,6 +80,22 @@ export interface Alert {
   scrapedAt: string;
 }
 
+export interface DiscoveredSailing {
+  id: number;
+  competitorId: number;
+  matchedRouteId: number | null;
+  name: string;
+  url: string;
+  destination: string | null;
+  nights: number | null;
+  routeType: RouteType | null;
+  status: "pending" | "approved" | "rejected";
+  discoveredAt: string;
+  reviewedAt: string | null;
+  competitor: { name: string; tier: CompetitorTier };
+  matchedRoute: { destination: string; routeType: RouteType; nightsMin: number; nightsMax: number } | null;
+}
+
 export const TIER_LABELS: Record<CompetitorTier, string> = {
   direct: "Direct competitor",
   international: "International",

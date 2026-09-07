@@ -53,6 +53,54 @@ const fredOlsenSailings: SeedSailing[] = [
   { name: "Canary Islands Christmas & New Year — Suite", url: FRED_OLSEN_CANARIES_URL, priceSelector: "#suite-standard-tab .price", cabinType: "suite", routeType: "ex_uk", destination: "Canary Islands" },
 ];
 
+interface SeedCabinTemplate {
+  cabinType: string;
+  priceSelector: string;
+  notes?: string;
+}
+
+/**
+ * Reusable per-cabin-type price selectors, proven (by checking multiple
+ * real cruises during manual setup) to work for ANY cruise on that
+ * competitor's site — not just the one they were first found on. These
+ * are what let a newly discovered cruise become a fully tracked sailing
+ * from just a URL (see routes/competitors.ts POST /:id/sailings/from-url),
+ * without needing fresh HTML each time.
+ *
+ * Fred. Olsen: selecting the tab's whole <p> (not just the nested
+ * <span class="price">) works whether that cabin grade currently has a
+ * price or shows "Please Call" — both are valid, meaningful states, and
+ * parsePrice() already turns "Please Call" into price: null without
+ * treating it as a scrape error. The mid-tier cabin's tab id varies by
+ * ship (Balmoral: "balcony", Bolette: "terrace"), so both are seeded;
+ * whichever doesn't apply to a given ship will just report "no element
+ * matched" harmlessly for that one cabin type.
+ */
+const fredOlsenCabinTemplates: SeedCabinTemplate[] = [
+  { cabinType: "suite", priceSelector: "#suite-standard-tab p" },
+  { cabinType: "ocean", priceSelector: "#ocean-standard-tab p" },
+  { cabinType: "interior", priceSelector: "#interior-standard-tab p" },
+  { cabinType: "single", priceSelector: "#single-standard-tab p" },
+  { cabinType: "balcony", priceSelector: "#balcony-standard-tab p", notes: "Ship-dependent — see terrace" },
+  { cabinType: "terrace", priceSelector: "#terrace-standard-tab p", notes: "Ship-dependent — see balcony" },
+];
+
+/**
+ * P&O's cruise detail hero shows only the single cheapest cabin grade's
+ * price (labelled e.g. "Inside Based On 2 Guests From" — dynamic per
+ * cruise, not always Inside), not one price per cabin type the way Fred.
+ * Olsen's widget does. So this template is deliberately labelled
+ * "lowest_fare" rather than a specific cabin type — it's confirmed from
+ * one cruise only, so treat as provisional until checked against another.
+ */
+const poCabinTemplates: SeedCabinTemplate[] = [
+  {
+    cabinType: "lowest_fare",
+    priceSelector: '#c-cruise-detail-overview-hero [data-testid="c-curreny-content"]',
+    notes: "Whichever cabin grade the hero shows as cheapest — read the page's own label to know which one",
+  },
+];
+
 interface SeedCompetitor {
   name: string;
   website: string;
@@ -232,6 +280,17 @@ async function upsertSailings(competitorName: string, sailings: SeedSailing[]) {
   }
 }
 
+async function upsertCabinTemplates(competitorName: string, templates: SeedCabinTemplate[]) {
+  const competitor = await prisma.competitor.findFirstOrThrow({ where: { name: competitorName } });
+  for (const template of templates) {
+    await prisma.cabinSelectorTemplate.upsert({
+      where: { competitorId_cabinType: { competitorId: competitor.id, cabinType: template.cabinType } },
+      update: template,
+      create: { ...template, competitorId: competitor.id },
+    });
+  }
+}
+
 async function main() {
   for (const c of competitors) {
     const existing = await prisma.competitor.findFirst({ where: { name: c.name } });
@@ -244,6 +303,8 @@ async function main() {
 
   await upsertSailings("Fred. Olsen Cruise Lines", fredOlsenSailings);
   await upsertSailings("P&O Cruises", poSailings);
+  await upsertCabinTemplates("Fred. Olsen Cruise Lines", fredOlsenCabinTemplates);
+  await upsertCabinTemplates("P&O Cruises", poCabinTemplates);
 
   const totalSailings = fredOlsenSailings.length + poSailings.length;
   console.log(

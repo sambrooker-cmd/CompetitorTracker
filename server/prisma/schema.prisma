@@ -35,9 +35,91 @@ model Competitor {
   offersUrl       String?
   offerSelector   String? // CSS selector matching each individual offer/promo element
   renderMode      String  @default("static") // "static" (axios+cheerio) or "js" (headless browser)
-  products     Product[]
-  offers       Offer[]
-  createdAt    DateTime  @default(now())
+
+  // Discovery: a search/listing page (e.g. Fred. Olsen's /cruise-deals) that
+  // can be scraped periodically to find current cruises, rather than each
+  // one being registered by hand. Selectors are relative to each matched
+  // card. listingFlyIndicatorSelector's presence/absence marks a card as a
+  // fly-cruise vs ex-UK no-fly — the actual ex_uk/fly_caribbean route type
+  // is then decided by scraper/discoverListing.ts against a Caribbean
+  // destination keyword list, since "fly" alone isn't "fly-Caribbean".
+  listingUrl                   String?
+  listingCardSelector          String?
+  listingNameSelector          String?
+  listingUrlSelector           String?
+  listingNightsSelector        String?
+  listingFlyIndicatorSelector  String?
+
+  products               Product[]
+  offers                 Offer[]
+  discoveredSailings     DiscoveredSailing[]
+  cabinSelectorTemplates CabinSelectorTemplate[]
+  createdAt              DateTime  @default(now())
+}
+
+// A reusable price selector for one cabin type on this competitor's cruise
+// detail pages, e.g. Fred. Olsen's "#interior-standard-tab .price" — proven
+// (across multiple cruises during manual setup) to work for ANY cruise on
+// that site, not just the one it was first found on. This is what lets a
+// newly discovered cruise (see DiscoveredSailing) be turned into full
+// per-cabin tracked sailings from just a URL, without needing fresh HTML.
+model CabinSelectorTemplate {
+  id            Int        @id @default(autoincrement())
+  competitorId  Int
+  competitor    Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  cabinType     String
+  priceSelector String
+  promoSelector String?
+  renderMode    String     @default("static")
+  notes         String?
+  createdAt     DateTime   @default(now())
+
+  @@unique([competitorId, cabinType])
+}
+
+// Ambassador's own sailing programme — the canonical reference that
+// discovered competitor cruises are matched against for "parity" tracking.
+// Populated from ambassadorcruiseline.com itself (see README), not
+// invented — this table starts empty until that source is scraped/entered.
+model AmbassadorRoute {
+  id                 Int                 @id @default(autoincrement())
+  destination        String
+  routeType          String // "ex_uk" or "fly_caribbean"
+  nightsMin          Int
+  nightsMax          Int
+  departurePort      String?
+  sourceUrl          String?
+  active             Boolean             @default(true)
+  firstSeenAt        DateTime            @default(now())
+  lastSeenAt         DateTime            @default(now())
+  discoveredSailings DiscoveredSailing[]
+
+  @@index([routeType, destination])
+}
+
+// A candidate cruise found by a competitor's listing-discovery scraper,
+// awaiting human approval before it becomes a real tracked sailing (Phase
+// 2 of the discovery rollout — see README). Only candidates that classify
+// as ex_uk or fly_caribbean AND match an AmbassadorRoute are queued here;
+// anything else (e.g. a fly-cruise to a non-Caribbean destination) is
+// out of scope and never stored.
+model DiscoveredSailing {
+  id             Int              @id @default(autoincrement())
+  competitorId   Int
+  competitor     Competitor       @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  matchedRouteId Int?
+  matchedRoute   AmbassadorRoute? @relation(fields: [matchedRouteId], references: [id])
+  name           String
+  url            String
+  destination    String?
+  nights         Int?
+  routeType      String?
+  priceHint      String?
+  status         String           @default("pending") // pending | approved | rejected
+  discoveredAt   DateTime         @default(now())
+  reviewedAt     DateTime?
+
+  @@index([competitorId, status])
 }
 
 // A representative tracked sailing/itinerary used as a pricing sample point

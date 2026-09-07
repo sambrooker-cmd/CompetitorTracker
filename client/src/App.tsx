@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Competitors from "./pages/Competitors";
 import ProductDetail from "./pages/ProductDetail";
+import Discovered from "./pages/Discovered";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `px-3 py-2 rounded-md text-sm font-medium ${
@@ -21,6 +22,9 @@ export default function App() {
             <NavLink to="/competitors" className={navLinkClass}>
               Competitors
             </NavLink>
+            <NavLink to="/discovered" className={navLinkClass}>
+              Discovered
+            </NavLink>
           </nav>
         </div>
       </header>
@@ -29,6 +33,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/competitors" element={<Competitors />} />
           <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/discovered" element={<Discovered />} />
         </Routes>
       </main>
     </div>
