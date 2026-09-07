@@ -16,6 +16,33 @@ import { prisma } from "./lib/prisma";
  * workbook and will need its own pass.
  */
 
+interface SeedSailing {
+  name: string;
+  url: string;
+  priceSelector: string;
+  cabinType: string;
+  routeType: "ex_uk" | "fly_caribbean";
+  destination: string;
+}
+
+/**
+ * Fred. Olsen's cabin-pricing widget shows one "from" price per cabin type
+ * in a slider of <a id="{type}-standard-tab"> cards, each with a
+ * <span class="price"> — except when a grade has no price ("Please Call"),
+ * where there's no .price span and the selector below falls back to the
+ * card's <p> text so that's captured verbatim instead of erroring.
+ * Selectors verified against real markup copied from the live page
+ * (2026-09-07); ids are per-page (not cruise-specific) so this only works
+ * for the one cruise at FRED_OLSEN_CRUISE_URL below.
+ */
+const FRED_OLSEN_CRUISE_URL = "https://www.fredolsencruises.com/cruise/festive-france-belgium-l2640";
+const fredOlsenSailings: SeedSailing[] = [
+  { name: "Festive France & Belgium — Interior", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#interior-standard-tab .price", cabinType: "inside", routeType: "ex_uk", destination: "France & Belgium" },
+  { name: "Festive France & Belgium — Ocean", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#ocean-standard-tab .price", cabinType: "oceanview", routeType: "ex_uk", destination: "France & Belgium" },
+  { name: "Festive France & Belgium — Balcony", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#balcony-standard-tab p", cabinType: "balcony", routeType: "ex_uk", destination: "France & Belgium" },
+  { name: "Festive France & Belgium — Suite", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#suite-standard-tab .price", cabinType: "suite", routeType: "ex_uk", destination: "France & Belgium" },
+];
+
 interface SeedCompetitor {
   name: string;
   website: string;
@@ -156,7 +183,22 @@ async function main() {
       await prisma.competitor.create({ data: c });
     }
   }
-  console.log(`Seed complete: ${competitors.length} competitors (4 direct, 5 international, 6 trade).`);
+
+  const fredOlsen = await prisma.competitor.findFirstOrThrow({ where: { name: "Fred. Olsen Cruise Lines" } });
+  for (const sailing of fredOlsenSailings) {
+    const existing = await prisma.product.findFirst({ where: { competitorId: fredOlsen.id, name: sailing.name } });
+    const data = { ...sailing, currency: "GBP", competitorId: fredOlsen.id };
+    if (existing) {
+      await prisma.product.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.product.create({ data });
+    }
+  }
+
+  console.log(
+    `Seed complete: ${competitors.length} competitors (4 direct, 5 international, 6 trade), ` +
+      `${fredOlsenSailings.length} real tracked sailings for Fred. Olsen.`
+  );
 }
 
 main()
