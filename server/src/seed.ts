@@ -23,6 +23,7 @@ interface SeedSailing {
   cabinType: string;
   routeType: "ex_uk" | "fly_caribbean";
   destination: string;
+  nights?: number;
 }
 
 /**
@@ -58,7 +59,32 @@ interface SeedCompetitor {
   tier: "direct" | "international" | "trade";
   parentGroup: string | null;
   notes: string;
+  offersUrl?: string;
+  offerSelector?: string;
 }
+
+/**
+ * P&O's cruise detail page (a React/Next-style app, hydrated markup) shows
+ * the "from" price for one cabin type in a hero price block, and — on the
+ * same page — a separate "Offers on this cruise" section. Both selectors
+ * verified against real markup copied from the live page (2026-09-07).
+ * Since the offer text here doesn't mention this specific itinerary
+ * ("Just a 10% deposit"), it reads as a sitewide promotion surfaced on
+ * every cruise page rather than one unique to this sailing — so this same
+ * URL doubles as the competitor's offersUrl below.
+ */
+const PO_CRUISE_URL = "https://www.pocruises.com/find-a-cruise/K703/K703";
+const poSailings: SeedSailing[] = [
+  {
+    name: "Eastern Caribbean Islands Fly-Cruise (Arvia, K703) — Inside",
+    url: PO_CRUISE_URL,
+    priceSelector: '#c-cruise-detail-overview-hero [data-testid="c-curreny-content"]',
+    cabinType: "inside",
+    routeType: "fly_caribbean",
+    destination: "Eastern Caribbean Islands",
+    nights: 14,
+  },
+];
 
 const competitors: SeedCompetitor[] = [
   // Direct — closest product/size peers
@@ -93,6 +119,8 @@ const competitors: SeedCompetitor[] = [
     parentGroup: "Carnival Corporation & plc",
     notes:
       "UK's largest, most mainstream cruise brand — biggest UK cruise marketing budget by scale. Mainstream family/couples positioning vs Ambassador's adult-only niche, but the most direct competitor for broad brand awareness share of voice.",
+    offersUrl: PO_CRUISE_URL,
+    offerSelector: "#special-offers .bg-base.rounded-md",
   },
   // International — bigger premium/mainstream lines with UK no-fly programmes
   {
@@ -183,6 +211,19 @@ const competitors: SeedCompetitor[] = [
   },
 ];
 
+async function upsertSailings(competitorName: string, sailings: SeedSailing[]) {
+  const competitor = await prisma.competitor.findFirstOrThrow({ where: { name: competitorName } });
+  for (const sailing of sailings) {
+    const existing = await prisma.product.findFirst({ where: { competitorId: competitor.id, name: sailing.name } });
+    const data = { ...sailing, currency: "GBP", competitorId: competitor.id };
+    if (existing) {
+      await prisma.product.update({ where: { id: existing.id }, data });
+    } else {
+      await prisma.product.create({ data });
+    }
+  }
+}
+
 async function main() {
   for (const c of competitors) {
     const existing = await prisma.competitor.findFirst({ where: { name: c.name } });
@@ -193,20 +234,13 @@ async function main() {
     }
   }
 
-  const fredOlsen = await prisma.competitor.findFirstOrThrow({ where: { name: "Fred. Olsen Cruise Lines" } });
-  for (const sailing of fredOlsenSailings) {
-    const existing = await prisma.product.findFirst({ where: { competitorId: fredOlsen.id, name: sailing.name } });
-    const data = { ...sailing, currency: "GBP", competitorId: fredOlsen.id };
-    if (existing) {
-      await prisma.product.update({ where: { id: existing.id }, data });
-    } else {
-      await prisma.product.create({ data });
-    }
-  }
+  await upsertSailings("Fred. Olsen Cruise Lines", fredOlsenSailings);
+  await upsertSailings("P&O Cruises", poSailings);
 
+  const totalSailings = fredOlsenSailings.length + poSailings.length;
   console.log(
     `Seed complete: ${competitors.length} competitors (4 direct, 5 international, 6 trade), ` +
-      `${fredOlsenSailings.length} real tracked sailings for Fred. Olsen.`
+      `${totalSailings} real tracked sailings (Fred. Olsen: ${fredOlsenSailings.length}, P&O: ${poSailings.length}).`
   );
 }
 

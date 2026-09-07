@@ -30,14 +30,29 @@ export async function scrapeAndDiffOffers(competitorId: number): Promise<OfferDi
     return { competitorId, found: 0, created: 0, ended: 0, error: "No offersUrl/offerSelector configured" };
   }
 
-  let candidates: string[];
+  interface Candidate {
+    title: string;
+    rawText: string;
+  }
+
+  let candidates: Candidate[];
   try {
     const html = await fetchHtml(competitor.offersUrl, competitor.renderMode);
     const $ = cheerio.load(html);
     candidates = $(competitor.offerSelector)
-      .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
+      .map((_, el) => {
+        const $el = $(el);
+        const rawText = $el.text().replace(/\s+/g, " ").trim();
+        // Prefer a heading inside the offer element as the stable "title" to
+        // key on — falling back to a truncated slice of the full text keeps
+        // a copy tweak in the body from reading as a brand-new offer when
+        // the same heading is still there (e.g. P&O's "Just a 10% deposit").
+        const heading = $el.find("h1,h2,h3,h4,h5,h6").first().text().replace(/\s+/g, " ").trim();
+        const title = heading || (rawText.length > MAX_TITLE_LENGTH ? `${rawText.slice(0, MAX_TITLE_LENGTH)}…` : rawText);
+        return { title, rawText };
+      })
       .get()
-      .filter((text) => text.length > 0);
+      .filter((c) => c.rawText.length > 0);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown scrape error";
     return { competitorId, found: 0, created: 0, ended: 0, error: message };
@@ -48,8 +63,7 @@ export async function scrapeAndDiffOffers(competitorId: number): Promise<OfferDi
   const matchedActiveIds = new Set<number>();
   let created = 0;
 
-  for (const rawText of candidates) {
-    const title = rawText.length > MAX_TITLE_LENGTH ? `${rawText.slice(0, MAX_TITLE_LENGTH)}…` : rawText;
+  for (const { title, rawText } of candidates) {
     const existing = activeOffers.find((o) => o.title.toLowerCase() === title.toLowerCase());
 
     if (existing) {
