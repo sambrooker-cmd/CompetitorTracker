@@ -36,11 +36,20 @@ interface SeedSailing {
  * for the one cruise at FRED_OLSEN_CRUISE_URL below.
  */
 const FRED_OLSEN_CRUISE_URL = "https://www.fredolsencruises.com/cruise/festive-france-belgium-l2640";
+const FRED_OLSEN_CANARIES_URL = "https://www.fredolsencruises.com/cruise/canary-islands-christmas-new-year-t2630";
 const fredOlsenSailings: SeedSailing[] = [
   { name: "Festive France & Belgium — Interior", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#interior-standard-tab .price", cabinType: "inside", routeType: "ex_uk", destination: "France & Belgium" },
   { name: "Festive France & Belgium — Ocean", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#ocean-standard-tab .price", cabinType: "oceanview", routeType: "ex_uk", destination: "France & Belgium" },
   { name: "Festive France & Belgium — Balcony", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#balcony-standard-tab p", cabinType: "balcony", routeType: "ex_uk", destination: "France & Belgium" },
   { name: "Festive France & Belgium — Suite", url: FRED_OLSEN_CRUISE_URL, priceSelector: "#suite-standard-tab .price", cabinType: "suite", routeType: "ex_uk", destination: "France & Belgium" },
+  // Canary Islands Christmas & New Year (T2630, ship Bolette) — same widget
+  // structure, but this ship's mid-tier cabin is branded "Terrace" rather
+  // than "Balcony"; kept as its own free-text cabinType rather than
+  // force-mapped, per the schema's "or a competitor's own label" note.
+  { name: "Canary Islands Christmas & New Year — Interior", url: FRED_OLSEN_CANARIES_URL, priceSelector: "#interior-standard-tab .price", cabinType: "inside", routeType: "ex_uk", destination: "Canary Islands" },
+  { name: "Canary Islands Christmas & New Year — Ocean", url: FRED_OLSEN_CANARIES_URL, priceSelector: "#ocean-standard-tab .price", cabinType: "oceanview", routeType: "ex_uk", destination: "Canary Islands" },
+  { name: "Canary Islands Christmas & New Year — Terrace", url: FRED_OLSEN_CANARIES_URL, priceSelector: "#terrace-standard-tab p", cabinType: "terrace", routeType: "ex_uk", destination: "Canary Islands" },
+  { name: "Canary Islands Christmas & New Year — Suite", url: FRED_OLSEN_CANARIES_URL, priceSelector: "#suite-standard-tab .price", cabinType: "suite", routeType: "ex_uk", destination: "Canary Islands" },
 ];
 
 interface SeedCompetitor {
