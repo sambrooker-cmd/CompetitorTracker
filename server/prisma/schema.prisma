@@ -1,13 +1,15 @@
 // Prisma schema for the Competitor Pricing & Promotions Tracker.
 //
-// Defaults to SQLite (zero-config, free, file-based) for local dev and
-// small free-tier deployments. To use a free hosted Postgres instead
-// (e.g. Neon or Supabase free tier), change the provider below to
-// "postgresql" and set DATABASE_URL accordingly — no other code changes
-// are needed since the app only uses Prisma's generated client.
+// Uses Postgres (a free Neon or Supabase project works fine) for both
+// local dev and deployment — not SQLite, since most free hosting tiers
+// (e.g. Render's free web service) have an ephemeral filesystem that
+// wipes a SQLite file on every restart/redeploy. Using the same provider
+// everywhere also avoids maintaining two sets of migrations. See
+// README.md "Local development" for how to point DATABASE_URL at either
+// a local Postgres or a free Neon/Supabase branch.
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,9 +18,9 @@ generator client {
 }
 
 // Note: fields documented as "one of ..." below are plain Strings rather
-// than Prisma `enum`s, since Prisma emulates enums on SQLite with no DB-level
-// constraint anyway — a String keeps the default SQLite setup and a swap to
-// Postgres both simple, with validation done in the API layer.
+// than Prisma `enum`s — validated in the API layer (see lib/constants.ts)
+// instead of at the DB level, so adding a new value (e.g. another
+// competitor tier) is a constant change, not a migration.
 
 model Competitor {
   id           Int       @id @default(autoincrement())
