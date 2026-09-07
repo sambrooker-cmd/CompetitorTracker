@@ -95,6 +95,14 @@ const competitors: SeedCompetitor[] = [
     parentGroup: "Independent (family-owned)",
     notes:
       "Closest direct positioning peer — small-ship, heritage, regional UK-port focus (Liverpool, Newcastle/Tyne, Rosyth, Dover, Southampton). Heavier trade/agent incentive activity and national TV presence than Ambassador.",
+    // /cruise-deals is a search-results listing (mixed ex-UK and fly-cruise
+    // itineraries), not a curated offers page — each result card carries
+    // its own "Available Offers" badges (e.g. "Free Flight", "Kids Sail
+    // Free"). Selector matches every badge across every card; the same
+    // badge text repeating across many cards is deduped in scrapeOffers.ts
+    // rather than treated as separate offers.
+    offersUrl: "https://www.fredolsencruises.com/cruise-deals",
+    offerSelector: ".cruise-offers .offer-pill",
   },
   {
     name: "Saga Cruises",

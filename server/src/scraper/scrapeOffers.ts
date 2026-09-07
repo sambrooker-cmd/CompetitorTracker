@@ -58,6 +58,18 @@ export async function scrapeAndDiffOffers(competitorId: number): Promise<OfferDi
     return { competitorId, found: 0, created: 0, ended: 0, error: message };
   }
 
+  // A listing/search-results page (e.g. a "deals" page with one offer
+  // badge per cruise card) can match the same offer text many times in
+  // one scrape — dedupe by title so repeats update one Offer row instead
+  // of creating a new one per occurrence.
+  const seenTitles = new Set<string>();
+  candidates = candidates.filter((c) => {
+    const key = c.title.toLowerCase();
+    if (seenTitles.has(key)) return false;
+    seenTitles.add(key);
+    return true;
+  });
+
   const activeOffers = await prisma.offer.findMany({ where: { competitorId, active: true } });
   const now = new Date();
   const matchedActiveIds = new Set<number>();
