@@ -1,6 +1,5 @@
-import * as cheerio from "cheerio";
 import { prisma } from "../lib/prisma";
-import { fetchHtml } from "./fetchHtml";
+import { scrapeListingCards } from "./scrapeListingCards";
 import { CARIBBEAN_KEYWORDS } from "../lib/constants";
 import type { RouteType } from "../lib/constants";
 
@@ -18,11 +17,6 @@ function isCaribbean(destination: string): boolean {
   return CARIBBEAN_KEYWORDS.some((kw) => norm.includes(kw));
 }
 
-function extractNights(text: string): number | null {
-  const match = text.match(/(\d+)\s*night/i);
-  return match ? Number(match[1]) : null;
-}
-
 /**
  * Scrapes a competitor's search/listing page (e.g. Fred. Olsen's
  * /cruise-deals) for candidate cruises, classifying each as ex_uk,
@@ -38,48 +32,30 @@ function extractNights(text: string): number | null {
 export async function discoverListing(competitorId: number): Promise<DiscoveredCandidate[]> {
   const competitor = await prisma.competitor.findUniqueOrThrow({ where: { id: competitorId } });
 
-  if (!competitor.listingUrl || !competitor.listingCardSelector || !competitor.listingNameSelector || !competitor.listingUrlSelector) {
+  if (!competitor.listingUrl || !competitor.listingCardSelector || !competitor.listingNameSelector) {
     return [];
   }
 
-  const html = await fetchHtml(competitor.listingUrl, competitor.renderMode);
-  const $ = cheerio.load(html);
+  const cards = await scrapeListingCards({
+    url: competitor.listingUrl,
+    baseUrl: competitor.website,
+    renderMode: competitor.renderMode,
+    cardSelector: competitor.listingCardSelector,
+    nameSelector: competitor.listingNameSelector,
+    urlSelector: competitor.listingUrlSelector,
+    nightsSelector: competitor.listingNightsSelector,
+    flyIndicatorSelector: competitor.listingFlyIndicatorSelector,
+  });
 
-  const candidates: DiscoveredCandidate[] = [];
-
-  $(competitor.listingCardSelector).each((_, el) => {
-    const $el = $(el);
-    // .clone() + .children().remove() strips nested elements (e.g. a cruise
-    // code badge inside the name heading) so they don't pollute the name
-    // with e.g. "Charming Spanish Cities L2633" — direct text only.
-    const $name = $el.find(competitor.listingNameSelector!).first().clone();
-    $name.children().remove();
-    const name = $name.text().replace(/\s+/g, " ").trim();
-    const href = $el.find(competitor.listingUrlSelector!).first().attr("href");
-    if (!name || !href) return;
-
-    let url: string;
-    try {
-      url = new URL(href, competitor.website).toString();
-    } catch {
-      return;
-    }
-
-    const nightsText = competitor.listingNightsSelector ? $el.find(competitor.listingNightsSelector).first().text() : "";
-    const nights = extractNights(nightsText);
-    const isFly = competitor.listingFlyIndicatorSelector ? $el.find(competitor.listingFlyIndicatorSelector).length > 0 : false;
-
+  return cards.map((card) => {
     let routeType: RouteType | null;
-    if (!isFly) {
+    if (!card.isFly) {
       routeType = "ex_uk";
-    } else if (isCaribbean(name)) {
+    } else if (isCaribbean(card.name)) {
       routeType = "fly_caribbean";
     } else {
       routeType = null;
     }
-
-    candidates.push({ name, url, destination: name, nights, routeType });
+    return { name: card.name, url: card.url, destination: card.name, nights: card.nights, routeType };
   });
-
-  return candidates;
 }

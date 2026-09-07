@@ -172,10 +172,23 @@ workflow above, in three parts:
    list of what counts as "in scope": destination, night-count range, and
    `routeType` (`ex_uk`/`fly_caribbean`). This has to come from
    Ambassador's own sailing programme (ambassadorcruiseline.com) — nothing
-   here invents it. Populate it the same way a competitor gets its first
-   selectors: send a listing-page URL + a copied card, or (once someone
-   with network access can) write a listing-discovery config for
-   Ambassador's own site and run it into this table.
+   here invents it. `scraper/ingestAmbassadorRoutes.ts` scrapes
+   ambassadorcruiseline.com/search/ (via `POST /api/ambassador-routes/ingest`,
+   also run automatically on the weekly discovery cron) and upserts one
+   route per card, using the card's own marketing name as the destination
+   (e.g. "Autumn Fjordland") — every card counts as in-scope by
+   definition, since Ambassador only sells the two segments this app
+   tracks, unlike competitor discovery which has to filter some out.
+   A marketing name is rarely the cleanest label to fuzzy-match
+   competitor destinations against, so use the CRUD API
+   (`GET`/`POST`/`PATCH`/`DELETE /api/ambassador-routes`) to simplify
+   ingested names (e.g. "Autumn Fjordland" → "Norwegian Fjords") or add
+   routes by hand where ingestion under- or over-fragments things. The
+   fly-Caribbean indicator selector (`svg[name="Plane"]`) is an educated
+   guess by analogy with the Calendar/Moon/Anchor/Ship icons seen on a
+   real ex-UK card — it hasn't been checked against an actual
+   fly-Caribbean card yet, so treat fly_caribbean routes from ingestion as
+   provisional until that's confirmed.
 2. **Per-competitor listing discovery** — a competitor with `listingUrl` +
    `listingCardSelector`/`listingNameSelector`/`listingUrlSelector`
    configured (plus optionally `listingNightsSelector` and

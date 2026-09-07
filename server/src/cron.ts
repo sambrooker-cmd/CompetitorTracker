@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { scrapeAll } from "./scraper/scrape";
 import { scrapeAllOffers } from "./scraper/scrapeOffers";
 import { runDiscoveryAll } from "./scraper/runDiscovery";
+import { ingestAmbassadorRoutes } from "./scraper/ingestAmbassadorRoutes";
 
 const DEFAULT_SCHEDULE = "0 6 * * *"; // daily at 06:00 UTC — cruise pricing/offers don't move hourly
 const DEFAULT_DISCOVERY_SCHEDULE = "0 5 * * 1"; // weekly, Monday 05:00 UTC — listing pages change far less often than prices
@@ -57,6 +58,11 @@ async function runScrape() {
 async function runDiscovery() {
   console.log("Running scheduled discovery...");
   try {
+    const ambassador = await ingestAmbassadorRoutes();
+    console.log(
+      `Ambassador route ingest: ${ambassador.found} found, ${ambassador.created} created, ` +
+        `${ambassador.updated} updated${ambassador.error ? `, error: ${ambassador.error}` : ""}`
+    );
     const results = await runDiscoveryAll();
     const totalQueued = results.reduce((sum, r) => sum + r.queued, 0);
     console.log(`Scheduled discovery done: ${results.length} competitors, ${totalQueued} new candidates queued for review`);

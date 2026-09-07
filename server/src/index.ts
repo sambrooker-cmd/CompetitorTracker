@@ -7,6 +7,7 @@ import { alertsRouter } from "./routes/alerts";
 import { offersRouter } from "./routes/offers";
 import { scrapeRouter } from "./routes/scrape";
 import { discoveryRouter } from "./routes/discovery";
+import { ambassadorRoutesRouter } from "./routes/ambassadorRoutes";
 import { startScrapeCron } from "./cron";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use("/api/alerts", alertsRouter);
 app.use("/api/offers", offersRouter);
 app.use("/api/scrape", scrapeRouter);
 app.use("/api/discovered-sailings", discoveryRouter);
+app.use("/api/ambassador-routes", ambassadorRoutesRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
