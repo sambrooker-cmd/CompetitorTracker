@@ -6,19 +6,16 @@ const AMBASSADOR_SEARCH_URL = "https://www.ambassadorcruiseline.com/search/";
 const AMBASSADOR_BASE_URL = "https://www.ambassadorcruiseline.com";
 
 /**
- * Ambassador's search-result cards (verified against a real card,
- * 2026-09-07): the card itself is the <a> (no nested link, hence
- * urlSelector: null), and the duration value has no selector of its own —
- * it's a plain sibling div following the label div that contains the
- * "Moon" icon, so it's targeted via that icon as a landmark rather than a
- * class.
- *
- * flyIndicatorSelector is UNCONFIRMED — the one card seen so far is an
- * ex-UK sailing (departure: a UK port, no fly-related icon/text at all),
- * so there's no real example yet of what a fly-Caribbean card looks like
- * for Ambassador. Guessing a "Plane" icon by analogy with the Calendar/
- * Moon/Anchor/Ship icons already seen — needs confirming against a real
- * fly-cruise card before this is trusted.
+ * Ambassador's search-result cards (verified against two real cards,
+ * 2026-09-07 — one ex-UK, one fly-Caribbean): the card itself is the <a>
+ * (no nested link, hence urlSelector: null), and the duration value has
+ * no selector of its own — it's a plain sibling div following the label
+ * div that contains the "Moon" icon, so it's targeted via that icon as a
+ * landmark rather than a class. The fly-Caribbean card confirmed a
+ * "Plane" icon labels an "Airport:" field (alongside the "Anchor"-iconed
+ * "Departure:" port field, which is present on both card types — a
+ * fly-cruise here still names a UK port, presumably where the ship
+ * itself is based, plus the separate flight's airport).
  */
 const AMBASSADOR_LISTING_CONFIG = {
   cardSelector: "a[data-id]",

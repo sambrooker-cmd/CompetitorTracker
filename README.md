@@ -183,12 +183,7 @@ workflow above, in three parts:
    competitor destinations against, so use the CRUD API
    (`GET`/`POST`/`PATCH`/`DELETE /api/ambassador-routes`) to simplify
    ingested names (e.g. "Autumn Fjordland" → "Norwegian Fjords") or add
-   routes by hand where ingestion under- or over-fragments things. The
-   fly-Caribbean indicator selector (`svg[name="Plane"]`) is an educated
-   guess by analogy with the Calendar/Moon/Anchor/Ship icons seen on a
-   real ex-UK card — it hasn't been checked against an actual
-   fly-Caribbean card yet, so treat fly_caribbean routes from ingestion as
-   provisional until that's confirmed.
+   routes by hand where ingestion under- or over-fragments things.
 2. **Per-competitor listing discovery** — a competitor with `listingUrl` +
    `listingCardSelector`/`listingNameSelector`/`listingUrlSelector`
    configured (plus optionally `listingNightsSelector` and
