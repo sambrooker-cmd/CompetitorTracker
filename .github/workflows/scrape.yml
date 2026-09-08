@@ -12,8 +12,12 @@ name: Scheduled competitor scrape
 #        API_URL              e.g. https://your-app.onrender.com
 #        SCRAPE_TRIGGER_TOKEN matching the server's SCRAPE_TRIGGER_TOKEN env var
 on:
-  schedule:
-    - cron: "0 6 * * *" # daily at 06:00 UTC — matches the server's SCRAPE_CRON default
+  # Scheduled trigger paused (2026-09-08) while reviewing robots.txt/ToS
+  # coverage across the full competitor set — see README "A note on
+  # scraping responsibly". Uncomment the schedule below to resume; manual
+  # runs (workflow_dispatch, in the Actions tab) still work while paused.
+  # schedule:
+  #   - cron: "0 6 * * *" # daily at 06:00 UTC — matches the server's SCRAPE_CRON default
   workflow_dispatch: {}
 
 jobs:

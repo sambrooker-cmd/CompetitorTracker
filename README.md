@@ -22,7 +22,7 @@ Seeded from the "Competitor Identification and Market Context" workbook
 that workbook's own analysis splits them:
 
 - **Direct** (closest product/size peers): Fred. Olsen Cruise Lines, Saga
-  Cruises, Marella Cruises, P&O Cruises
+  Cruises, Marella Cruises
 - **International** (bigger premium/mainstream lines with UK no-fly
   programmes): Cunard, MSC Cruises (UK), Celebrity Cruises, Princess
   Cruises, Royal Caribbean International
@@ -32,6 +32,15 @@ that workbook's own analysis splits them:
 
 The fly-Caribbean sub-segment's competitor set is explicitly out of scope
 for that workbook and hasn't been seeded — it needs its own pass.
+
+**P&O Cruises is deliberately not tracked**, despite being a real direct
+competitor per the workbook. Their Terms of Service explicitly prohibit
+automated scraping/extraction/data-mining of the site (including for AI
+systems specifically) — a contractual restriction, not just a robots.txt
+signal. Before wiring up any competitor, check both `robots.txt` and the
+site's ToS (see **A note on scraping responsibly** below); Cunard and Princess
+Cruises share P&O's parent (Carnival Corporation & plc) and may carry the
+same clause, so check their ToS too before adding scrapers for them.
 
 `npm run seed` (in `server/`) loads this list as `Competitor` rows only —
 no sailings or offer pages are pre-configured, because writing a real CSS
@@ -148,7 +157,7 @@ cruise on the *same* competitor doesn't need fresh HTML: their per-cabin
 price selectors are usually a sitewide template (e.g. Fred. Olsen's
 `#{cabintype}-standard-tab p` worked identically across two different
 ships). Save the proven selectors as `CabinSelectorTemplate` rows for that
-competitor (see `seed.ts` for the Fred. Olsen/P&O examples), then:
+competitor (see `seed.ts` for the Fred. Olsen example), then:
 
 ```bash
 POST /api/competitors/:id/sailings/from-url
@@ -224,6 +233,15 @@ Only scrape pages you're allowed to access. Check each competitor's
 volume low (the scraper already waits between requests and only fetches
 pages you configure), and expect that some sites will block or rate-limit
 automated requests — that's a property of the target site, not a bug here.
+
+A `robots.txt` `Disallow` is one signal, but not the only one: a site can
+have no `robots.txt` at all (no restriction implied) while its Terms of
+Service separately prohibit automated access as a condition of using the
+site — that's a stronger, contractual restriction, and takes precedence.
+P&O Cruises is excluded from this tracker for exactly that reason: their
+ToS explicitly bans scraping/data-mining (including for AI systems), even
+though they publish no `robots.txt` rule against it. Check both before
+adding a competitor, not just one.
 
 ## Local development
 
