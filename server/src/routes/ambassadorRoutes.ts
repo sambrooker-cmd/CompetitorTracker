@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { ROUTE_TYPES } from "../lib/constants";
 import { ingestAmbassadorRoutes } from "../scraper/ingestAmbassadorRoutes";
+import { isScrapingPaused } from "../lib/scrapeGuard";
 
 export const ambassadorRoutesRouter = Router();
 
@@ -64,6 +65,9 @@ ambassadorRoutesRouter.delete("/:id", async (req, res) => {
 
 // POST /api/ambassador-routes/ingest - scrape ambassadorcruiseline.com/search/ and upsert routes
 ambassadorRoutesRouter.post("/ingest", async (_req, res) => {
+  if (isScrapingPaused()) {
+    return res.status(503).json({ error: "Scraping is currently paused (SCRAPING_ENABLED=false)" });
+  }
   const result = await ingestAmbassadorRoutes();
   res.json(result);
 });
