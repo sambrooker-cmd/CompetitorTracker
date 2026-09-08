@@ -109,6 +109,13 @@ interface SeedCompetitor {
   notes: string;
   offersUrl?: string;
   offerSelector?: string;
+  listingUrl?: string;
+  listingCardSelector?: string;
+  listingUrlSelector?: string;
+  listingNameAttr?: string;
+  listingNightsAttr?: string;
+  listingFlyIndicatorAttr?: string;
+  listingFlyIndicatorNonFlyValue?: string;
 }
 
 /**
@@ -151,6 +158,23 @@ const competitors: SeedCompetitor[] = [
     // rather than treated as separate offers.
     offersUrl: "https://www.fredolsencruises.com/cruise-deals",
     offerSelector: ".cruise-offers .offer-pill",
+    // /cruises (not /cruise-deals) is the full sailings catalogue, used for
+    // parity discovery — /cruise-deals only shows discounted itineraries,
+    // which would miss any ex-UK sailing not currently on promotion. Cards
+    // here expose structured data-* attributes directly (Algolia-backed
+    // search results), which is more robust than text-scraping nested
+    // elements. Verified against a real ex-UK card (2026-09-08):
+    // data-cruise-type="CruiseOnly" on a Southampton departure. The
+    // fly-cruise counterpart value for data-cruise-type hasn't been
+    // confirmed against real markup yet — treated as "anything other than
+    // CruiseOnly" until a real fly-cruise card from this page is seen.
+    listingUrl: "https://www.fredolsencruises.com/cruises",
+    listingCardSelector: ".cruise-listing-block[data-cruise-code]",
+    listingUrlSelector: "a.record-link",
+    listingNameAttr: "data-cruise-name",
+    listingNightsAttr: "data-duration",
+    listingFlyIndicatorAttr: "data-cruise-type",
+    listingFlyIndicatorNonFlyValue: "CruiseOnly",
   },
   {
     name: "Saga Cruises",

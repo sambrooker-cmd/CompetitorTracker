@@ -32,7 +32,8 @@ function isCaribbean(destination: string): boolean {
 export async function discoverListing(competitorId: number): Promise<DiscoveredCandidate[]> {
   const competitor = await prisma.competitor.findUniqueOrThrow({ where: { id: competitorId } });
 
-  if (!competitor.listingUrl || !competitor.listingCardSelector || !competitor.listingNameSelector) {
+  const hasNameSource = competitor.listingNameSelector || competitor.listingNameAttr;
+  if (!competitor.listingUrl || !competitor.listingCardSelector || !hasNameSource) {
     return [];
   }
 
@@ -42,9 +43,13 @@ export async function discoverListing(competitorId: number): Promise<DiscoveredC
     renderMode: competitor.renderMode,
     cardSelector: competitor.listingCardSelector,
     nameSelector: competitor.listingNameSelector,
+    nameAttr: competitor.listingNameAttr,
     urlSelector: competitor.listingUrlSelector,
     nightsSelector: competitor.listingNightsSelector,
+    nightsAttr: competitor.listingNightsAttr,
     flyIndicatorSelector: competitor.listingFlyIndicatorSelector,
+    flyIndicatorAttr: competitor.listingFlyIndicatorAttr,
+    flyIndicatorNonFlyValue: competitor.listingFlyIndicatorNonFlyValue,
   });
 
   return cards.map((card) => {
