@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { scrapeAll, scrapeAndSave } from "../scraper/scrape";
 import { scrapeAllOffers, scrapeAndDiffOffers } from "../scraper/scrapeOffers";
+import { isScrapingPaused } from "../lib/scrapeGuard";
 
 export const scrapeRouter = Router();
 
@@ -10,6 +11,9 @@ export const scrapeRouter = Router();
 // so an external scheduler (e.g. GitHub Actions) can wake a sleeping free
 // dyno/service and kick off scraping without exposing this publicly.
 scrapeRouter.post("/run", async (req, res) => {
+  if (isScrapingPaused()) {
+    return res.status(503).json({ error: "Scraping is currently paused (SCRAPING_ENABLED=false)" });
+  }
   const expectedToken = process.env.SCRAPE_TRIGGER_TOKEN;
   if (expectedToken && req.header("X-Scrape-Token") !== expectedToken) {
     return res.status(401).json({ error: "Invalid or missing scrape token" });
@@ -36,6 +40,9 @@ scrapeRouter.post("/run", async (req, res) => {
 
 // POST /api/scrape/offers/:competitorId - scrape just one competitor's offers page
 scrapeRouter.post("/offers/:competitorId", async (req, res) => {
+  if (isScrapingPaused()) {
+    return res.status(503).json({ error: "Scraping is currently paused (SCRAPING_ENABLED=false)" });
+  }
   const expectedToken = process.env.SCRAPE_TRIGGER_TOKEN;
   if (expectedToken && req.header("X-Scrape-Token") !== expectedToken) {
     return res.status(401).json({ error: "Invalid or missing scrape token" });

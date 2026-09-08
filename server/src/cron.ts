@@ -3,6 +3,7 @@ import { scrapeAll } from "./scraper/scrape";
 import { scrapeAllOffers } from "./scraper/scrapeOffers";
 import { runDiscoveryAll } from "./scraper/runDiscovery";
 import { ingestAmbassadorRoutes } from "./scraper/ingestAmbassadorRoutes";
+import { isScrapingPaused } from "./lib/scrapeGuard";
 
 const DEFAULT_SCHEDULE = "0 6 * * *"; // daily at 06:00 UTC — cruise pricing/offers don't move hourly
 const DEFAULT_DISCOVERY_SCHEDULE = "0 5 * * 1"; // weekly, Monday 05:00 UTC — listing pages change far less often than prices
@@ -16,6 +17,11 @@ const DEFAULT_DISCOVERY_SCHEDULE = "0 5 * * 1"; // weekly, Monday 05:00 UTC — 
  * schedule as a backup that also wakes a sleeping service.
  */
 export function startScrapeCron() {
+  if (isScrapingPaused()) {
+    console.log("Scraping is paused (SCRAPING_ENABLED=false) — cron jobs not scheduled.");
+    return;
+  }
+
   const schedule = process.env.SCRAPE_CRON || DEFAULT_SCHEDULE;
   if (!cron.validate(schedule)) {
     console.warn(`Invalid SCRAPE_CRON "${schedule}", falling back to daily`);

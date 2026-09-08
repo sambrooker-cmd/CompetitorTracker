@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { runDiscoveryForCompetitor, runDiscoveryAll } from "../scraper/runDiscovery";
+import { isScrapingPaused } from "../lib/scrapeGuard";
 
 export const discoveryRouter = Router();
 
@@ -69,6 +70,9 @@ discoveryRouter.post("/:id/reject", async (req, res) => {
 
 // POST /api/discovery/run - trigger discovery for one competitor (?competitorId=) or all
 discoveryRouter.post("/run", async (req, res) => {
+  if (isScrapingPaused()) {
+    return res.status(503).json({ error: "Scraping is currently paused (SCRAPING_ENABLED=false)" });
+  }
   const competitorId = req.query.competitorId ? Number(req.query.competitorId) : null;
   try {
     if (competitorId) {

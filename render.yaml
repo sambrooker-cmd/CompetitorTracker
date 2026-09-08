@@ -24,6 +24,8 @@ services:
         sync: false
       - key: SCRAPE_TRIGGER_TOKEN
         generateValue: true
+      - key: SCRAPING_ENABLED
+        value: "true"
       - key: SCRAPE_CRON
         value: "0 6 * * *"
       - key: DISCOVERY_CRON
