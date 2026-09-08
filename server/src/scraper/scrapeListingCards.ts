@@ -68,7 +68,13 @@ export async function scrapeListingCards(config: ListingSelectorConfig): Promise
 
     let url: string;
     try {
-      url = new URL(href, config.baseUrl).toString();
+      // Strip tracking/session query params (e.g. Fred. Olsen's search
+      // results carry ?queryID=...&indexName=..., which their robots.txt
+      // explicitly disallows crawling: "Disallow: *?queryID=*") — the
+      // canonical page without them is the same cruise and isn't disallowed.
+      const parsed = new URL(href, config.baseUrl);
+      parsed.search = "";
+      url = parsed.toString();
     } catch {
       return;
     }
