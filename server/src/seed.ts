@@ -85,22 +85,6 @@ const fredOlsenCabinTemplates: SeedCabinTemplate[] = [
   { cabinType: "terrace", priceSelector: "#terrace-standard-tab p", notes: "Ship-dependent — see balcony" },
 ];
 
-/**
- * P&O's cruise detail hero shows only the single cheapest cabin grade's
- * price (labelled e.g. "Inside Based On 2 Guests From" — dynamic per
- * cruise, not always Inside), not one price per cabin type the way Fred.
- * Olsen's widget does. So this template is deliberately labelled
- * "lowest_fare" rather than a specific cabin type — it's confirmed from
- * one cruise only, so treat as provisional until checked against another.
- */
-const poCabinTemplates: SeedCabinTemplate[] = [
-  {
-    cabinType: "lowest_fare",
-    priceSelector: '#c-cruise-detail-overview-hero [data-testid="c-curreny-content"]',
-    notes: "Whichever cabin grade the hero shows as cheapest — read the page's own label to know which one",
-  },
-];
-
 interface SeedCompetitor {
   name: string;
   website: string;
@@ -118,28 +102,15 @@ interface SeedCompetitor {
   listingFlyIndicatorNonFlyValue?: string;
 }
 
-/**
- * P&O's cruise detail page (a React/Next-style app, hydrated markup) shows
- * the "from" price for one cabin type in a hero price block, and — on the
- * same page — a separate "Offers on this cruise" section. Both selectors
- * verified against real markup copied from the live page (2026-09-07).
- * Since the offer text here doesn't mention this specific itinerary
- * ("Just a 10% deposit"), it reads as a sitewide promotion surfaced on
- * every cruise page rather than one unique to this sailing — so this same
- * URL doubles as the competitor's offersUrl below.
- */
-const PO_CRUISE_URL = "https://www.pocruises.com/find-a-cruise/K703/K703";
-const poSailings: SeedSailing[] = [
-  {
-    name: "Eastern Caribbean Islands Fly-Cruise (Arvia, K703) — Inside",
-    url: PO_CRUISE_URL,
-    priceSelector: '#c-cruise-detail-overview-hero [data-testid="c-curreny-content"]',
-    cabinType: "inside",
-    routeType: "fly_caribbean",
-    destination: "Eastern Caribbean Islands",
-    nights: 14,
-  },
-];
+// P&O Cruises is deliberately NOT tracked here — their Terms of Service
+// explicitly prohibit automated scraping/extraction/data-mining of the
+// site (checked 2026-09-08), including for AI systems specifically. This
+// is a contractual restriction, not just a robots.txt crawler-etiquette
+// signal, so P&O is excluded from automated tracking entirely rather than
+// scraped anyway. REMOVED_COMPETITORS below deletes any previously-seeded
+// P&O rows (and their cascaded Products/Offers/CabinSelectorTemplates) the
+// next time this seed runs — including via the production admin endpoint.
+const REMOVED_COMPETITORS = ["P&O Cruises"];
 
 const competitors: SeedCompetitor[] = [
   // Direct — closest product/size peers
@@ -194,16 +165,9 @@ const competitors: SeedCompetitor[] = [
     notes:
       "3rd-largest UK cruise line. All-inclusive, mainstream value positioning; broader (over-40s, family-adjacent) audience than Ambassador. Backed by TUI Group's much larger media budget and retail/high-street distribution.",
   },
-  {
-    name: "P&O Cruises",
-    website: "https://www.pocruises.com",
-    tier: "direct",
-    parentGroup: "Carnival Corporation & plc",
-    notes:
-      "UK's largest, most mainstream cruise brand — biggest UK cruise marketing budget by scale. Mainstream family/couples positioning vs Ambassador's adult-only niche, but the most direct competitor for broad brand awareness share of voice.",
-    offersUrl: PO_CRUISE_URL,
-    offerSelector: "#special-offers .bg-base.rounded-md",
-  },
+  // Note: P&O Cruises is a real direct competitor (UK's largest mainstream
+  // cruise brand, Carnival Corporation & plc) but is intentionally absent
+  // from this list — see REMOVED_COMPETITORS above for why.
   // International — bigger premium/mainstream lines with UK no-fly programmes
   {
     name: "Cunard",
@@ -318,6 +282,10 @@ async function upsertCabinTemplates(competitorName: string, templates: SeedCabin
 }
 
 export async function seedDatabase() {
+  for (const name of REMOVED_COMPETITORS) {
+    await prisma.competitor.deleteMany({ where: { name } });
+  }
+
   for (const c of competitors) {
     const existing = await prisma.competitor.findFirst({ where: { name: c.name } });
     if (existing) {
@@ -328,17 +296,16 @@ export async function seedDatabase() {
   }
 
   await upsertSailings("Fred. Olsen Cruise Lines", fredOlsenSailings);
-  await upsertSailings("P&O Cruises", poSailings);
   await upsertCabinTemplates("Fred. Olsen Cruise Lines", fredOlsenCabinTemplates);
-  await upsertCabinTemplates("P&O Cruises", poCabinTemplates);
 
-  const totalSailings = fredOlsenSailings.length + poSailings.length;
+  const totalSailings = fredOlsenSailings.length;
   return {
     competitors: competitors.length,
     sailings: totalSailings,
     summary:
-      `Seed complete: ${competitors.length} competitors (4 direct, 5 international, 6 trade), ` +
-      `${totalSailings} real tracked sailings (Fred. Olsen: ${fredOlsenSailings.length}, P&O: ${poSailings.length}).`,
+      `Seed complete: ${competitors.length} competitors (3 direct, 5 international, 6 trade), ` +
+      `${totalSailings} real tracked sailings (Fred. Olsen: ${fredOlsenSailings.length}). ` +
+      `P&O Cruises excluded (ToS prohibits automated scraping) and removed if previously seeded.`,
   };
 }
 
