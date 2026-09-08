@@ -150,12 +150,13 @@ const competitors: SeedCompetitor[] = [
     parentGroup: "Independent (family-owned)",
     notes:
       "Closest direct positioning peer — small-ship, heritage, regional UK-port focus (Liverpool, Newcastle/Tyne, Rosyth, Dover, Southampton). Heavier trade/agent incentive activity and national TV presence than Ambassador.",
-    // /cruise-deals is a search-results listing (mixed ex-UK and fly-cruise
-    // itineraries), not a curated offers page — each result card carries
-    // its own "Available Offers" badges (e.g. "Free Flight", "Kids Sail
-    // Free"). Selector matches every badge across every card; the same
-    // badge text repeating across many cards is deduped in scrapeOffers.ts
-    // rather than treated as separate offers.
+    // /cruise-deals is a search-results listing, not a curated offers page —
+    // each result card carries its own "Available Offers" badges (e.g.
+    // "Free Flight" — a flight to the UK departure port, not a fly-cruise;
+    // Fred. Olsen doesn't run fly-cruise itineraries — "Kids Sail Free").
+    // Selector matches every badge across every card; the same badge text
+    // repeating across many cards is deduped in scrapeOffers.ts rather than
+    // treated as separate offers.
     offersUrl: "https://www.fredolsencruises.com/cruise-deals",
     offerSelector: ".cruise-offers .offer-pill",
     // /cruises (not /cruise-deals) is the full sailings catalogue, used for
@@ -163,11 +164,12 @@ const competitors: SeedCompetitor[] = [
     // which would miss any ex-UK sailing not currently on promotion. Cards
     // here expose structured data-* attributes directly (Algolia-backed
     // search results), which is more robust than text-scraping nested
-    // elements. Verified against a real ex-UK card (2026-09-08):
-    // data-cruise-type="CruiseOnly" on a Southampton departure. The
-    // fly-cruise counterpart value for data-cruise-type hasn't been
-    // confirmed against real markup yet — treated as "anything other than
-    // CruiseOnly" until a real fly-cruise card from this page is seen.
+    // elements. Verified against a real card (2026-09-08):
+    // data-cruise-type="CruiseOnly" on a Southampton departure — the only
+    // value expected in practice, since Fred. Olsen doesn't run fly-cruise
+    // itineraries; listingFlyIndicatorNonFlyValue is still set so a
+    // classification mistake would fail loudly (candidate misfiled as fly)
+    // rather than silently.
     listingUrl: "https://www.fredolsencruises.com/cruises",
     listingCardSelector: ".cruise-listing-block[data-cruise-code]",
     listingUrlSelector: "a.record-link",
