@@ -291,7 +291,7 @@ async function upsertCabinTemplates(competitorName: string, templates: SeedCabin
   }
 }
 
-async function main() {
+export async function seedDatabase() {
   for (const c of competitors) {
     const existing = await prisma.competitor.findFirst({ where: { name: c.name } });
     if (existing) {
@@ -307,15 +307,23 @@ async function main() {
   await upsertCabinTemplates("P&O Cruises", poCabinTemplates);
 
   const totalSailings = fredOlsenSailings.length + poSailings.length;
-  console.log(
-    `Seed complete: ${competitors.length} competitors (4 direct, 5 international, 6 trade), ` +
-      `${totalSailings} real tracked sailings (Fred. Olsen: ${fredOlsenSailings.length}, P&O: ${poSailings.length}).`
-  );
+  return {
+    competitors: competitors.length,
+    sailings: totalSailings,
+    summary:
+      `Seed complete: ${competitors.length} competitors (4 direct, 5 international, 6 trade), ` +
+      `${totalSailings} real tracked sailings (Fred. Olsen: ${fredOlsenSailings.length}, P&O: ${poSailings.length}).`,
+  };
 }
 
-main()
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+// Only run as a one-off script when invoked directly (`npm run seed`) — not
+// when imported by the admin seed route below.
+if (require.main === module) {
+  seedDatabase()
+    .then((result) => console.log(result.summary))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}
