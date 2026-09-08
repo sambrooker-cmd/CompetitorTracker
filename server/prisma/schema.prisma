@@ -51,6 +51,18 @@ model Competitor {
   listingUrlSelector           String?
   listingNightsSelector        String?
   listingFlyIndicatorSelector  String?
+  // Alternative to the selectors above, for listing pages that expose
+  // structured data attributes directly on the card element (e.g. Fred.
+  // Olsen's /cruises: data-cruise-name, data-duration, data-cruise-type) —
+  // more robust than text-scraping nested elements when available. Takes
+  // precedence over the matching *Selector field when both are set.
+  listingNameAttr                 String?
+  listingNightsAttr               String?
+  listingFlyIndicatorAttr         String?
+  // The attribute value (from listingFlyIndicatorAttr) that means "NOT a
+  // fly-cruise" (e.g. Fred. Olsen's "CruiseOnly") — any other value present
+  // on that attribute is treated as a fly-cruise.
+  listingFlyIndicatorNonFlyValue  String?
 
   products               Product[]
   offers                 Offer[]

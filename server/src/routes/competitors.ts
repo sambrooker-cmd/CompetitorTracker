@@ -61,6 +61,10 @@ competitorsRouter.patch("/:id", async (req, res) => {
     listingUrlSelector,
     listingNightsSelector,
     listingFlyIndicatorSelector,
+    listingNameAttr,
+    listingNightsAttr,
+    listingFlyIndicatorAttr,
+    listingFlyIndicatorNonFlyValue,
   } = req.body ?? {};
 
   if (tier && !COMPETITOR_TIERS.includes(tier)) {
@@ -88,6 +92,10 @@ competitorsRouter.patch("/:id", async (req, res) => {
         listingUrlSelector,
         listingNightsSelector,
         listingFlyIndicatorSelector,
+        listingNameAttr,
+        listingNightsAttr,
+        listingFlyIndicatorAttr,
+        listingFlyIndicatorNonFlyValue,
       },
     })
     .catch(() => null);
